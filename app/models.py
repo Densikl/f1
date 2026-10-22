@@ -21,6 +21,7 @@ class Team(db.Model):
     power_unit: Mapped[str]
 
     drivers: Mapped[list["Driver"]] = relationship(back_populates="team")
+    results: Mapped[list["RaceResult"]] = relationship(back_populates="team")
 
     def to_dict(self, include_drivers=False):
         data = {
@@ -43,9 +44,9 @@ class Driver(db.Model):
     last_name: Mapped[str]
     number: Mapped[int]
     nationality: Mapped[str]
-    team_id: Mapped[int] = mapped_column(ForeignKey("teams.id"))
+    team_id: Mapped[int | None] = mapped_column(ForeignKey("teams.id"))
 
-    team: Mapped[Team] = relationship(back_populates="drivers")
+    team: Mapped[Team | None] = relationship(back_populates="drivers")
     results: Mapped[list["RaceResult"]] = relationship(back_populates="driver")
 
     def to_dict(self, include_team=False):
@@ -59,7 +60,7 @@ class Driver(db.Model):
             "team_id": self.team_id,
         }
         if include_team:
-            data["team"] = self.team.to_dict()
+            data["team"] = self.team.to_dict() if self.team else None
         return data
 
 
@@ -93,12 +94,14 @@ class RaceResult(db.Model):
     id: Mapped[int] = mapped_column(primary_key=True)
     race_id: Mapped[int] = mapped_column(ForeignKey("races.id"))
     driver_id: Mapped[int] = mapped_column(ForeignKey("drivers.id"))
+    team_id: Mapped[int] = mapped_column(ForeignKey("teams.id"))
     position: Mapped[int | None]
     points: Mapped[int] = mapped_column(default=0)
     status: Mapped[str] = mapped_column(default="Finished")
 
     race: Mapped[Race] = relationship(back_populates="results")
     driver: Mapped[Driver] = relationship(back_populates="results")
+    team: Mapped[Team] = relationship(back_populates="results")
 
     def to_dict(self):
         return {
@@ -112,4 +115,5 @@ class RaceResult(db.Model):
                 "code": self.driver.code,
                 "name": f"{self.driver.first_name} {self.driver.last_name}",
             },
+            "team": {"id": self.team.id, "name": self.team.name},
         }
